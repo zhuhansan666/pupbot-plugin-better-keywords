@@ -1,6 +1,6 @@
 {
     "name": "pupbot-plugin-better-keywords",
-    "version": "1.3.5",
+    "version": "1.3.6",
     "description": "更好的关键词回复",
     "main": "index.js",
     "scripts": {

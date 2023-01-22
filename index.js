@@ -131,7 +131,6 @@ async function hooker(event, params, plugin, func, args) {
 }
 
 function startWithInArr(string, arr) {
-    length = length == null ? string.length : length
     for (_item of arr) {
         if (string.slice(0, _item.length) == _item) {
             return true
@@ -160,8 +159,8 @@ function addKeyword(name, value, type, event, valueType = 'text') {
      */
     valueJson = { value: value, type: valueType } // 主Json
     console.log(value.slice(0, 9))
-    if (endWithInArr(value, urlHearders)) { //如果是url或file://本地url
-        if (startWithInArr(value, imgSuffix)) { // 如果是图片url直链
+    if (startWithInArr(value, urlHearders)) { //如果是url或file://本地url
+        if (endWithInArr(value, imgSuffix)) { // 如果是图片url直链
             valueJson.type = 'img' // 更改valueType
                 // } else if (endWithInArr(value, videoSuffix)) { // 如果是视频直链
                 //     valueJson.type = 'vid' // 更改valueType
