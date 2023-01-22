@@ -7,7 +7,8 @@
 * 传入参数: `event`
     * 详见 *[oicq MessageEvent](https://oicqjs.github.io/oicq/interfaces/MessageEvent.html)*
 
-* 返回值: `{value: <value>, type: <type>}`
+* 返回值: `{value: <value>, type: <type>}` / `undefined`
+    * 当返回值为 `undefined` 时我们不会进行任何操作
     * `value`支持的类型`string, arr, oicq.segment`, 使用`arr`或`oicq.sengment`请将模式改为`oicq`
     * `type`支持内容(均为string):
       * `img` -> 仅图片(`segment.image(value)`发送, `value`应为图片直链)
@@ -20,6 +21,8 @@
 function main(event) {
     // 进行一些操作
     return {value: <您的数据>, type: <您的类型(推荐oicq)>}
+    // 或者
+    return 
 }
 
 module.exports = { main }

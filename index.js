@@ -3,6 +3,7 @@ const { segment } = require("oicq")
 const path = require('path')
 const { name, version } = require('./package.json')
 const docx = require('./docs/docs.json')
+const fs = require('node:fs')
 
 function getPluginName(nameFromPackageJson) {
     _arr = nameFromPackageJson.split('-')
@@ -112,12 +113,34 @@ function reloadDocx() {
     const docx = require('./docs/docs.json') // 重新加载
 }
 
+function isAsyncFunc(func) {
+    if (typeof func === "function") {
+        try {
+            return func[Symbol.toStringTag] === "AsyncFunction"
+        } catch (_e) {
+            console.log(_e.stack)
+            return null
+        }
+    } else {
+        return null
+    }
+}
+
+function isJsonObject(_obj) {
+    try {
+        if (typeof JSON.stringify(_obj) === "string") {
+            return true;
+        }
+    } catch (e) {}
+    return false;
+}
+
 async function hooker(event, params, plugin, func, args) {
     /**
      * 本函数用于hook错误, 在发生错误时发送错误信息到qq
      */
     try {
-        func(event, params, plugin, args)
+        await func(event, params, plugin, args)
     } catch (error) {
         try {
             var funcname = func.name
@@ -158,13 +181,15 @@ function addKeyword(name, value, type, event, valueType = 'text') {
      * @param valueType 回复类型: text -> 仅文本, codeFile -> js文件(自动加载并调用main函数, 将函数返回值作为内容)
      */
     valueJson = { value: value, type: valueType } // 主Json
-    console.log(value.slice(0, 9))
-    if (startWithInArr(value, urlHearders)) { //如果是url或file://本地url
-        if (endWithInArr(value, imgSuffix)) { // 如果是图片url直链
+    if (endWithInArr(value, imgSuffix)) { // 如果是以图片后缀结尾的字符
+        if (startWithInArr(value, urlHearders)) { //如果是 url 或 file:// 本地url
             valueJson.type = 'img' // 更改valueType
                 // } else if (endWithInArr(value, videoSuffix)) { // 如果是视频直链
                 //     valueJson.type = 'vid' // 更改valueType
                 // }
+        } else if (fs.existsSync(value)) { // 如果其路径存在(本地文件)
+            valueJson.type = 'img' // 更改valueType
+            valueJson.value = `file://${value}` // 设置为 file:// 路径
         }
     }
     if (event.message_type == 'group') {
@@ -231,7 +256,7 @@ function rmKeyword(name, type, event) {
 //     return _result
 // }
 
-function bkwMain(event, params, plugin) {
+async function bkwMain(event, params, plugin) {
     // reloadDocx()
 
     if (params[0] == 'about') { // about关键字代表关于
@@ -347,8 +372,10 @@ function bkwMain(event, params, plugin) {
     }
 }
 
-function replyValue(value, event) {
-    if (typeof value == 'string') { // 如果是旧版存储方式(为string)直接发送
+async function replyValue(value, event) {
+    if (value == undefined) { // 如果是未定义直接返回
+        return
+    } else if (typeof value == 'string') { // 如果是旧版存储方式(为string)直接发送
         event.reply(value.toString())
     } else if (value.type == 'img') { // 如果是图片发送图片
         event.reply('图片发送较慢, 请耐心等待~')
@@ -362,22 +389,35 @@ function replyValue(value, event) {
         try {
             _path = path.join(path.join(PluginDataDir, "../../"), value.value) // 获取模块绝对路径
             const _tmp = require(_path) // 载入模块
-            result = _tmp.main(event) // 调用main方法并获取返回值
-                // event.reply(result) // 发送内容(支持 oicq 的 segment)
-            if (!typeof result == object) { // 如果不是obj, 直接throw 到上级hooker 函数显示到qq
-                err = new Error(`函数返回值错误, 应为 { "value": <返回内容>, "type": <返回类型> }, 而非 ${result}\n\tat main (${_path})`)
+            _isAsyncFunc = isAsyncFunc(_tmp.main)
+            if (_isAsyncFunc === true) { // 是异步函数
+                result = await _tmp.main(event) // 异步调用main方法并获取返回值
+            } else if (_isAsyncFunc === false) { // 不是异步函数
+                result = _tmp.main(event) // 同步调用main方法并获取返回值
+            } else { // 发生错误(返回值为null)
+                err = new Error(`错误: main 不是一个函数`)
+                plugin.logger.error(err)
+                throw err
+            }
+            // event.reply(result) // 发送内容(支持 oicq 的 segment)
+
+            delete require.cache[require.resolve(_path)] // 清除模块缓存
+            delete _tmp // 清除模块
+            if (result === undefined) { // 返回值为undefined直接退出调用
+                return
+            }
+            if (!isJsonObject(result)) { // 如果不是obj, 直接throw 到上级hooker 函数显示到qq
+                err = new Error(`函数返回值错误, 应为 { "value": <返回内容>, "type": <返回类型> }, 而非 ${result}\nat main (${_path})`)
                 plugin.logger.error(err)
                 throw err
             }
             if (result.type != "codeFile") { // 返回值合法
                 replyValue(result.value, result.type) // 回调
             } else { // 如果发送的类型任然是codeFile, 直接throw 到上级hooker 函数显示到qq, 避免循环调用
-                err = new Error(`函数返回值错误, { "value": <返回内容>, "type": <返回类型> } 的 <返回类型> 不应为 codeFile 以免造成循环调用\n\tat main (${_path})`)
+                err = new Error(`函数返回值错误, { "value": <返回内容>, "type": <返回类型> } 的 <返回类型> 不应为 codeFile 以免造成循环调用\nat main (${_path})`)
                 plugin.logger.error(err)
                 throw err
             }
-            delete require.cache[require.resolve(_path)] // 清除模块缓存
-            delete _tmp // 清除模块
         } catch (error) { // 直接throw 到上级hooker 函数显示到qq
             plugin.logger.error(error)
             throw error
@@ -391,8 +431,8 @@ function replyValue(value, event) {
     }
 }
 
-function listener(event, param, plugin) {
-    message = event.raw_message.toString()
+async function listener(event, param, plugin, _message = null) {
+    message = _message == null ? event.raw_message.toString() : _message
     if (event.message_type == 'group') { // 群聊
         gid = event.group_id
         value = undefined
@@ -401,7 +441,7 @@ function listener(event, param, plugin) {
         if (keywordsGroups != undefined) {
             value = keywordsGroups[message]
             if (value != undefined) {
-                replyValue(value, event)
+                await replyValue(value, event)
                 return
             }
         }
@@ -412,7 +452,7 @@ function listener(event, param, plugin) {
         if (keywordsGlobalGroups != undefined) {
             value = keywordsGlobalGroups[message]
             if (value != undefined) {
-                replyValue(value, event)
+                await replyValue(value, event)
                 return
             }
             delete keywordsGlobalGroups, value
@@ -423,8 +463,8 @@ function listener(event, param, plugin) {
         if (keywordsGlobalAll != undefined) {
             value = keywordsGlobalAll[message]
             if (value != undefined) {
-                replyValue(value, event)
-                return
+                await replyValue(value, event)
+
             }
             delete keywordsGlobalAll, value
 
@@ -436,7 +476,7 @@ function listener(event, param, plugin) {
             value = keywordsGlobalFriends[message]
                 // 优先从全局的私聊寻找
             if (value != undefined) {
-                replyValue(value, event)
+                await replyValue(value, event)
                 return
             }
             delete keywordsGlobalFriends, value
@@ -447,11 +487,13 @@ function listener(event, param, plugin) {
         if (keywordsGlobalAll != undefined) {
             value = keywordsGlobalAll[message]
             if (value != undefined) {
-                replyValue(value, event)
+                await replyValue(value, event)
                 return
             }
             delete keywordsGlobalAll, value
         }
+        // 如果还是找不到就找以空格分割的首个内容(命令头)
+        await listener(event, param, plugin, message.split(' ')[0])
     }
 }
 
