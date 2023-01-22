@@ -182,14 +182,21 @@ function addKeyword(name, value, type, event, valueType = 'text') {
      */
     valueJson = { value: value, type: valueType } // 主Json
     if (endWithInArr(value, imgSuffix)) { // 如果是以图片后缀结尾的字符
-        if (startWithInArr(value, urlHearders)) { //如果是 url 或 file:// 本地url
-            valueJson.type = 'img' // 更改valueType
-                // } else if (endWithInArr(value, videoSuffix)) { // 如果是视频直链
-                //     valueJson.type = 'vid' // 更改valueType
-                // }
-        } else if (fs.existsSync(value)) { // 如果其路径存在(本地文件)
+        if (startWithInArr(value, urlHearders)) { //如果是 url 或 file:// 本地url 且 文件存在(自动识别相对/绝对路径)
+            if (value.slice(0, 'file://'.length) == 'file://') { // 如果是本地url
+                if (fs.existsSync(path.isAbsolute(value.replace('file://', '')) ? value.replace('file://', '') : path.join(path.join(PluginDataDir, "../../"), value.replace('file://', '')))) { // 检查文件是否存在
+                    valueJson.type = 'img' // 更改valueType
+                } else {
+                    event.reply(docx.commands.bkw.warning.replace('${errorStr}', `疑似图片本地url警告: ${value.replace('file://', '')} 不存在, 已使用默认模式↓`), true)
+                }
+            } else { // 其余url看作全部是正常的, 反正下面发送的地方有处理
+                valueJson.type = 'img'
+            }
+        } else if (fs.existsSync(path.isAbsolute(value) ? value : path.join(path.join(PluginDataDir, "../../"), value))) { // 如果其路径存在(本地文件)(自动识别相对/绝对路径)
             valueJson.type = 'img' // 更改valueType
             valueJson.value = `file://${value}` // 设置为 file:// 路径
+        } else {
+            event.reply(docx.commands.bkw.warning.replace('${errorStr}', `疑似图片路径 ${value} 不存在, 已使用默认模式↓`), true)
         }
     }
     if (event.message_type == 'group') {
@@ -322,7 +329,7 @@ async function bkwMain(event, params, plugin) {
                         plugin.saveConfig(config) // 保存配置
                     }
                 } else { // 否则指令语法错误
-                    event.reply(fromatDoxs(docx.commands.bkw.error, docx).replace('${errorStr}', `${keyword == undefined? 'keyword' : info == undefined ? 'info' : 'valueType'}参数为空`), true) // 发送错误信息
+                    event.reply(fromatDoxs(docx.commands.bkw.error, docx).replace('${errorStr}', `${keyword == undefined ? 'keyword' : info == undefined ? 'info' : 'valueType'}参数为空`), true) // 发送错误信息
                     sleep(docx.delay)
                     event.reply(fromatDoxs(docx.commands.bkw.help, docx)) // 发送帮助内容
                 }
@@ -378,11 +385,17 @@ async function replyValue(value, event) {
     } else if (typeof value == 'string') { // 如果是旧版存储方式(为string)直接发送
         event.reply(value.toString())
     } else if (value.type == 'img') { // 如果是图片发送图片
-        event.reply('图片发送较慢, 请耐心等待~')
-        event.reply(segment.image(value.value))
-            // } else if (value.type == 'vid') {
-            //     event.reply('视频发送较慢, 请耐心等待~')
-            //     event.reply(segment.video(value.value))
+        if (fs.existsSync(value.value.replace("file://", ''))) { // 如果文件存在
+            // event.reply('图片发送较慢, 请耐心等待~')
+            try {
+                _image = segment.image(value.value)
+                event.reply(_image)
+            } catch (error) {
+                event.reply(docx.commands.bkw.error.replace('${errorStr}', `发送图片错误: ${error.stack}`))
+            }
+        } else {
+            event.reply(docx.commands.bkw.error.replace('${errorStr}', `发送图片失败: ${value.value.replace('file://', '')} 不存在`), true)
+        }
     } else if (value.type == 'text') { //如果新版且是msg直接发送
         event.reply(value.value.toString())
     } else if (value.type == 'codeFile') { // 如果是脚本文件调用main函数并发送返回值
@@ -493,7 +506,9 @@ async function listener(event, param, plugin, _message = null) {
             delete keywordsGlobalAll, value
         }
         // 如果还是找不到就找以空格分割的首个内容(命令头)
-        await listener(event, param, plugin, message.split(' ')[0])
+        if (_message == null) {
+            await listener(event, param, plugin, message.split(' ')[0])
+        }
     }
 }
 
