@@ -404,9 +404,9 @@ async function replyValue(value, event) {
             const _tmp = require(_path) // 载入模块
             _isAsyncFunc = isAsyncFunc(_tmp.main)
             if (_isAsyncFunc === true) { // 是异步函数
-                result = await _tmp.main(event) // 异步调用main方法并获取返回值
+                result = await _tmp.main(event, plugin) // 异步调用main方法并获取返回值
             } else if (_isAsyncFunc === false) { // 不是异步函数
-                result = _tmp.main(event) // 同步调用main方法并获取返回值
+                result = _tmp.main(event, plugin) // 同步调用main方法并获取返回值
             } else { // 发生错误(返回值为null)
                 err = new Error(`错误: main 不是一个函数`)
                 plugin.logger.error(err)

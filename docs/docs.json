@@ -10,6 +10,6 @@
             "rmSuccess": "\"${keyname}\"(权限组: ${permissonGroup})移除成功"
         }
     },
-    "about": "感谢您使用${plugin.name}, 该插件用于提升keyword功能, 固取名为${plugin.name}\n作者: 爱喝牛奶の涛哥, 当前版本: ${plugin.version}\n开源地址: \n\thttps://github.com/zhuhansan666/pupbot-plugin-better-keywords\n\thttps://www.npmjs.com/package/pupbot-plugin-better-keywords\n您还可以去github下载适用于本插件的js脚本\n\t",
+    "about": "感谢您使用${plugin.name}, 该插件用于提升keyword功能, 固取名为${plugin.name}\n作者: 爱喝牛奶の涛哥, 当前版本: ${plugin.version}\n开源地址: \n\thttps://github.com/zhuhansan666/pupbot-plugin-better-keywords\n\thttps://www.npmjs.com/package/pupbot-plugin-better-keywords\n您还可以去github下载适用于本插件的js脚本\n\thttps://github.com/zhuhansan666/better-keywords-scripts",
     "delay": 700
 }
