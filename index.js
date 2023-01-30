@@ -1,4 +1,4 @@
-const { PupPlugin, PluginDataDir } = require('@pupbot/core')
+const { PupPlugin, PluginDataDir, axios } = require('@pupbot/core')
 const { segment } = require("oicq")
 const path = require('path')
 const { name, version } = require('./package.json')
@@ -381,6 +381,16 @@ async function bkwMain(event, params, plugin) {
     }
 }
 
+async function getStatusCode(url) {
+    try {
+        return await (await axios.get(url, header = {
+            "user-agent": `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36 Edg/109.0.1518.70`
+        })).status
+    } catch (response) {
+        return response.response != undefined ? response.response.status : '请求失败'
+    }
+}
+
 async function replyValue(value, event) {
     if (value == undefined) { // 如果是未定义直接返回
         return
@@ -389,10 +399,11 @@ async function replyValue(value, event) {
     } else if (value.type == 'img') { // 如果是图片url发送图片
         try {
             _image = segment.image(value.value)
-            if (_image == undefined) {
-                event.reply(docx.commands.bkw.error.replace('${errorStr}', `此图片下载失败: ${value.value}`))
-            } else {
+            statusCode = await getStatusCode(value.value)
+            if (typeof statusCode == 'number' && statusCode >= 200 && statusCode < 400) {
                 event.reply(_image)
+            } else {
+                event.reply(docx.commands.bkw.error.replace('${errorStr}', `此图片下载失败(状态码: ${statusCode}): ${value.value}`))
             }
         } catch (error) {
             event.reply(docx.commands.bkw.error.replace('${errorStr}', `发送图片错误: ${error.stack}`))
@@ -401,11 +412,7 @@ async function replyValue(value, event) {
         if (fs.existsSync(value.value.replace("file://", ''))) { // 如果文件存在
             try {
                 _image = segment.image(value.value)
-                if (_image == undefined) {
-                    event.reply(docx.commands.bkw.error.replace('${errorStr}', `此图片下载失败: ${value.value}`))
-                } else {
-                    event.reply(_image)
-                }
+                event.reply(_image)
             } catch (error) {
                 event.reply(docx.commands.bkw.error.replace('${errorStr}', `发送图片错误: ${error.stack}`))
             }
