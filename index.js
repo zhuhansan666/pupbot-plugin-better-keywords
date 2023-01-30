@@ -389,7 +389,11 @@ async function replyValue(value, event) {
     } else if (value.type == 'img') { // 如果是图片url发送图片
         try {
             _image = segment.image(value.value)
-            event.reply(_image)
+            if (_image == undefined) {
+                event.reply(docx.commands.bkw.error.replace('${errorStr}', `此图片下载失败: ${value.value}`))
+            } else {
+                event.reply(_image)
+            }
         } catch (error) {
             event.reply(docx.commands.bkw.error.replace('${errorStr}', `发送图片错误: ${error.stack}`))
         }
@@ -397,7 +401,11 @@ async function replyValue(value, event) {
         if (fs.existsSync(value.value.replace("file://", ''))) { // 如果文件存在
             try {
                 _image = segment.image(value.value)
-                event.reply(_image)
+                if (_image == undefined) {
+                    event.reply(docx.commands.bkw.error.replace('${errorStr}', `此图片下载失败: ${value.value}`))
+                } else {
+                    event.reply(_image)
+                }
             } catch (error) {
                 event.reply(docx.commands.bkw.error.replace('${errorStr}', `发送图片错误: ${error.stack}`))
             }
