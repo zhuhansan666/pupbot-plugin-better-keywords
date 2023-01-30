@@ -79,6 +79,7 @@ const valueTypes = {
 }
 const privateTypes = {
     'img': '仅图片',
+    'img-file': '仅本地图片',
     'oicq': 'oicq支持的所有内容'
 }
 const imgSuffix = ['.png', '.jpg', '.jepg', '.bmp', '.gif', '.webp']
@@ -181,11 +182,12 @@ function addKeyword(name, value, type, event, valueType = 'text') {
      * @param valueType 回复类型: text -> 仅文本, codeFile -> js文件(自动加载并调用main函数, 将函数返回值作为内容)
      */
     valueJson = { value: value, type: valueType } // 主Json
-    if (endWithInArr(value, imgSuffix)) { // 如果是以图片后缀结尾的字符
+    urlWithOutArgvs = value.split('?')[0]
+    if (endWithInArr(urlWithOutArgvs == undefined ? "" : urlWithOutArgvs, imgSuffix)) { // 如果是以图片后缀结尾的字符
         if (startWithInArr(value, urlHearders)) { //如果是 url 或 file:// 本地url 且 文件存在(自动识别相对/绝对路径)
             if (value.slice(0, 'file://'.length) == 'file://') { // 如果是本地url
                 if (fs.existsSync(path.isAbsolute(value.replace('file://', '')) ? value.replace('file://', '') : path.join(path.join(PluginDataDir, "../../"), value.replace('file://', '')))) { // 检查文件是否存在
-                    valueJson.type = 'img' // 更改valueType
+                    valueJson.type = 'img-file' // 更改valueType
                 } else {
                     event.reply(docx.commands.bkw.warning.replace('${errorStr}', `疑似图片本地url警告: ${value.replace('file://', '')} 不存在, 已使用默认模式↓`), true)
                 }
@@ -384,9 +386,15 @@ async function replyValue(value, event) {
         return
     } else if (typeof value == 'string') { // 如果是旧版存储方式(为string)直接发送
         event.reply(value.toString())
-    } else if (value.type == 'img') { // 如果是图片发送图片
+    } else if (value.type == 'img') { // 如果是图片url发送图片
+        try {
+            _image = segment.image(value.value)
+            event.reply(_image)
+        } catch (error) {
+            event.reply(docx.commands.bkw.error.replace('${errorStr}', `发送图片错误: ${error.stack}`))
+        }
+    } else if (value.type == 'img-file') { // 如果是图片文件发送图片
         if (fs.existsSync(value.value.replace("file://", ''))) { // 如果文件存在
-            // event.reply('图片发送较慢, 请耐心等待~')
             try {
                 _image = segment.image(value.value)
                 event.reply(_image)

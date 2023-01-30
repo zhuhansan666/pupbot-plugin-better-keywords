@@ -12,6 +12,7 @@
     * `value`支持的类型`string, arr, oicq.segment`, 使用`arr`或`oicq.sengment`请将模式改为`oicq`
     * `type`支持内容(均为string):
       * `img` -> 仅图片(`segment.image(value)`发送, `value`应为图片直链)
+      * `img-file` -> 仅图片(本地文件) (`segment.image(value)`发送, `value`应为图片本地直链(`file://` 开头))
       * `text` -> 仅文本(`value.toString()`发送)
       * <del>`codeFile` -> 脚本文件</del> 不支持二次回调
       * `oicq` -> oicq模式, 支持所有oicq内容(包括`segment.*`)
