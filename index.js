@@ -132,7 +132,9 @@ function isJsonObject(_obj) {
         if (typeof JSON.stringify(_obj) === "string") {
             return true;
         }
-    } catch (e) {}
+    } catch (e) {
+        return false
+    }
     return false;
 }
 

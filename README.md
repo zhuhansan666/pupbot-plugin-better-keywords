@@ -1,3 +1,7 @@
+## ↓本包现已弃用, 请异步新版↓
+> [新版github](https://github.com/zhuhansan666/pupbot-plugin-better-keywords-rebuild)
+> [新版npm](https://www.npmjs.com/package/pupbot-plugin-better-keywords-rebuild)
+
 ## pupbot-plugin-better-keywords
 
 ## 用于自定义关键字并回复(有分群、私聊功能)
